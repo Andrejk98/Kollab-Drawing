@@ -1,46 +1,49 @@
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
+const fs = require("fs");
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+const PORT = 3000;
+
+// Serve static files
 app.use(express.static("public"));
 
-let position = null; // Store the selected position
-let drawings = []; // Store all confirmed drawings
+// Canvas state
+let mainCanvasDrawings = [];
+const MAX_DRAWINGS = 10; // Save and reset after 10 drawings
 
 io.on("connection", (socket) => {
-    console.log("A user connected");
+    console.log("Ein Benutzer hat sich verbunden.");
 
-    // Send current position and confirmed drawings to the new user
-    if (position) {
-        socket.emit("setPosition", position);
-    }
-    drawings.forEach((drawing) => {
-        socket.emit("updateMainCanvas", drawing);
-    });
+    socket.on("submitDrawing", (data) => {
+        mainCanvasDrawings.push(data.imageData);
 
-    // Listen for the position where the user wants to draw
-    socket.on("setPosition", (newPosition) => {
-        position = newPosition;
-        io.emit("setPosition", position); // Broadcast to all clients
-    });
-
-    // Listen for the confirmed drawing and place it on the main canvas
-    socket.on("confirmDrawing", (data) => {
-        drawings.push({ imageData: data.imageData, x: position.x, y: position.y });
-        io.emit("updateMainCanvas", { imageData: data.imageData, x: position.x, y: position.y });
-        position = null; // Reset position after confirmation
-        io.emit("clearCanvas");
-    });
-
-    socket.on("disconnect", () => {
-        console.log("A user disconnected");
+        if (mainCanvasDrawings.length >= MAX_DRAWINGS) {
+            saveAndResetMainCanvas();
+        } else {
+            io.emit("updateMainCanvas", { imageData: data.imageData, x: 0, y: 0 });
+        }
     });
 });
 
-server.listen(3000, () => {
-    console.log("Server running on http://localhost:3000");
+function saveAndResetMainCanvas() {
+    const timestamp = Date.now();
+    const filename = `mainCanvas_${timestamp}.png`;
+    const base64Data = mainCanvasDrawings[mainCanvasDrawings.length - 1].replace(/^data:image\/png;base64,/, "");
+
+    fs.writeFile(`./saved/${filename}`, base64Data, "base64", (err) => {
+        if (err) console.error("Fehler beim Speichern:", err);
+        console.log("Hauptleinwand gespeichert als:", filename);
+    });
+
+    mainCanvasDrawings = [];
+    io.emit("resetMainCanvas");
+}
+
+server.listen(PORT, () => {
+    console.log(`Server läuft auf http://localhost:${PORT}`);
 });

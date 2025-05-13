@@ -1,32 +1,20 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kollaborative Kunst</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Zeichenfläche</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
-        <h1 id="title">Kollaborative KunstWerk</h1>
-        <div class="controls" id="controls">
-            <input type="color" id="color" />
-            <select id="shape">
-                <option value="free">Freies Zeichnen</option>
-                <option value="circle">Kreis</option>
-                <option value="square">Quadrat</option>
-                <option value="triangle">Dreieck</option>
-            </select>
-            <button id="clear">Löschen</button>
-            <button id="confirm">Bestätigen</button>
+    <div id="mobile-container">
+        <div id="controls">
+            <label for="colorPicker">Farbe wählen:</label>
+            <input type="color" id="colorPicker" value="#000000">
         </div>
-        <div class="canvas-container">
-            <canvas id="drawingCanvas"></canvas>
-            <canvas id="mainCanvas"></canvas>
-        </div>
+        <canvas id="mobileCanvas"></canvas>
     </div>
-
     <script src="/socket.io/socket.io.js"></script>
-    <script src="app.js"></script>
+    <script src="mobile.js"></script>
 </body>
 </html>

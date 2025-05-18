@@ -1,16 +1,15 @@
 const socket = io();
 
-const canvas = document.getElementById("mobileCanvas");
+const canvas = document.getElementById("mainCanvas");
 const ctx = canvas.getContext("2d");
 
-const GRID_SIZE = 16; // Number of rows and columns
+const GRID_SIZE = 320; // Total grid size (16x20)
 let pixelSize; // Dynamically calculated based on canvas size
-let currentColor = "#000000"; // Default color
 
-// Resize canvas to fit viewport
+// Resize canvas
 function resizeCanvas() {
     canvas.width = window.innerWidth * 0.9;
-    canvas.height = window.innerHeight * 0.7;
+    canvas.height = window.innerHeight * 0.9;
     pixelSize = Math.min(canvas.width, canvas.height) / GRID_SIZE;
     drawGrid();
 }
@@ -35,21 +34,16 @@ function updatePixel(x, y, color) {
     ctx.strokeRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
 }
 
-// Handle touch interactions
-canvas.addEventListener("touchstart", (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const touch = e.touches[0];
-    const x = Math.floor((touch.clientX - rect.left) / pixelSize);
-    const y = Math.floor((touch.clientY - rect.top) / pixelSize);
-
-    // Update the pixel locally
-    updatePixel(x, y, currentColor);
-
-    // Send the update to the server
-    socket.emit("pixelUpdate", { x, y, color: currentColor });
+// Initialize main canvas
+socket.on("initMainCanvas", (data) => {
+    for (let y = 0; y < data.length; y++) {
+        for (let x = 0; x < data[y].length; x++) {
+            updatePixel(x, y, data[y][x]);
+        }
+    }
 });
 
-// Change color
-document.getElementById("colorPicker").addEventListener("input", (e) => {
-    currentColor = e.target.value;
+// Update pixel in real time
+socket.on("pixelUpdate", ({ x, y, color }) => {
+    updatePixel(x, y, color);
 });

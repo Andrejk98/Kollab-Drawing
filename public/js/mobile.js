@@ -1,55 +1,48 @@
-const socket = io();
-
 const canvas = document.getElementById("mobileCanvas");
 const ctx = canvas.getContext("2d");
+const GRID_SIZE = 16;
+const PIXEL_SIZE = 20; // Size of each pixel
+const socket = io();
 
-const GRID_SIZE = 16; // Number of rows and columns
-let pixelSize; // Dynamically calculated based on canvas size
-let currentColor = "#000000"; // Default color
+let color = "#000000"; // Default color
 
-// Resize canvas to fit viewport
+// Resize the canvas to fit the viewport
 function resizeCanvas() {
-    canvas.width = window.innerWidth * 0.9;
-    canvas.height = window.innerHeight * 0.7;
-    pixelSize = Math.min(canvas.width, canvas.height) / GRID_SIZE;
-    drawGrid();
+    canvas.width = GRID_SIZE * PIXEL_SIZE;
+    canvas.height = GRID_SIZE * PIXEL_SIZE;
 }
 resizeCanvas();
-window.addEventListener("resize", resizeCanvas);
 
-// Draw grid
+// Draw the grid
 function drawGrid() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     for (let x = 0; x < GRID_SIZE; x++) {
         for (let y = 0; y < GRID_SIZE; y++) {
             ctx.strokeStyle = "#ccc";
-            ctx.strokeRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+            ctx.strokeRect(x * PIXEL_SIZE, y * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
         }
     }
 }
+drawGrid();
 
-// Update pixel color
-function updatePixel(x, y, color) {
-    ctx.fillStyle = color;
-    ctx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
-    ctx.strokeStyle = "#ccc";
-    ctx.strokeRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
-}
-
-// Handle touch interactions
+// Handle touch events
 canvas.addEventListener("touchstart", (e) => {
-    const rect = canvas.getBoundingClientRect();
     const touch = e.touches[0];
-    const x = Math.floor((touch.clientX - rect.left) / pixelSize);
-    const y = Math.floor((touch.clientY - rect.top) / pixelSize);
+    const rect = canvas.getBoundingClientRect();
+    const x = Math.floor((touch.clientX - rect.left) / PIXEL_SIZE);
+    const y = Math.floor((touch.clientY - rect.top) / PIXEL_SIZE);
 
-    // Update the pixel locally
-    updatePixel(x, y, currentColor);
-
-    // Send the update to the server
-    socket.emit("pixelUpdate", { x, y, color: currentColor });
+    updatePixel(x, y);
 });
 
-// Change color
+// Update pixel color locally and on the server
+function updatePixel(x, y) {
+    ctx.fillStyle = color;
+    ctx.fillRect(x * PIXEL_SIZE, y * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
+    socket.emit("pixelUpdate", { x, y, color });
+}
+
+// Handle color picker
 document.getElementById("colorPicker").addEventListener("input", (e) => {
-    currentColor = e.target.value;
+    color = e.target.value;
 });

@@ -3,14 +3,16 @@ const socket = io();
 const canvas = document.getElementById("mainCanvas");
 const ctx = canvas.getContext("2d");
 
-const GRID_SIZE = 320; // Total grid size (16x20)
+const USERS = 20;
+const GRID_SIZE = 16; // Size of the grid for each user
+const MAIN_GRID_SIZE = GRID_SIZE * USERS; // Total grid size (320 for 20 users)
 let pixelSize; // Dynamically calculated based on canvas size
 
-// Resize canvas
+// Resize and recalculate pixel size
 function resizeCanvas() {
     canvas.width = window.innerWidth * 0.9;
     canvas.height = window.innerHeight * 0.9;
-    pixelSize = Math.min(canvas.width, canvas.height) / GRID_SIZE;
+    pixelSize = Math.min(canvas.width, canvas.height) / MAIN_GRID_SIZE;
     drawGrid();
 }
 resizeCanvas();
@@ -18,15 +20,15 @@ window.addEventListener("resize", resizeCanvas);
 
 // Draw grid
 function drawGrid() {
-    for (let x = 0; x < GRID_SIZE; x++) {
-        for (let y = 0; y < GRID_SIZE; y++) {
+    for (let x = 0; x < MAIN_GRID_SIZE; x++) {
+        for (let y = 0; y < MAIN_GRID_SIZE; y++) {
             ctx.strokeStyle = "#ccc";
             ctx.strokeRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
         }
     }
 }
 
-// Update pixel color
+// Update pixel without distortion
 function updatePixel(x, y, color) {
     ctx.fillStyle = color;
     ctx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
@@ -43,7 +45,8 @@ socket.on("initMainCanvas", (data) => {
     }
 });
 
-// Update pixel in real time
+
+// Receive updates from the server
 socket.on("pixelUpdate", ({ x, y, color }) => {
     updatePixel(x, y, color);
 });

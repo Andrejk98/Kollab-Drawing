@@ -1,46 +1,49 @@
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-const PORT = 3000;
-let mainCanvasData = []; // Store pixel data for main canvas
+const USERS = 20; // Total users
+const GRID_SIZE = 16; // Size of each user's grid
+const MAIN_GRID_SIZE = GRID_SIZE * USERS; // Size of the main canvas grid (320x320)
 
-// Serve static files
+let mainCanvasData = Array(MAIN_GRID_SIZE)
+    .fill(null)
+    .map(() => Array(MAIN_GRID_SIZE).fill("#ffffff")); // Initialize white grid
+
 app.use(express.static("public"));
 
-// Initialize the main canvas with default (white) pixels
-const GRID_SIZE = 16; // Grid size for mobile
-const USERS = 20; // Number of users
-const MAIN_CANVAS_GRID_SIZE = USERS * GRID_SIZE;
-
-for (let y = 0; y < MAIN_CANVAS_GRID_SIZE; y++) {
-    mainCanvasData[y] = Array(MAIN_CANVAS_GRID_SIZE).fill("#ffffff");
-}
-
-// Handle WebSocket connections
 io.on("connection", (socket) => {
     console.log("A user connected");
 
-    // Send initial main canvas data to new connections
-    socket.emit("initMainCanvas", mainCanvasData);
+    // Send the initial canvas state to the newly connected user
+    socket.emit("initCanvas", mainCanvasData);
 
-    // Receive pixel updates from mobile clients
+    // Update pixel and broadcast
     socket.on("pixelUpdate", ({ x, y, color }) => {
-        mainCanvasData[y][x] = color; // Update the pixel color on the server
+        const userIndex = Math.floor(y / GRID_SIZE) * USERS + Math.floor(x / GRID_SIZE);
+        const localX = x % GRID_SIZE;
+        const localY = y % GRID_SIZE;
 
-        // Broadcast the update to all connected clients
-        io.emit("pixelUpdate", { x, y, color });
+        const mappedX = (userIndex % USERS) * GRID_SIZE + localX;
+        const mappedY = Math.floor(userIndex / USERS) * GRID_SIZE + localY;
+
+        mainCanvasData[mappedY][mappedX] = color; // Update server-side grid
+        io.emit("pixelUpdate", { x: mappedX, y: mappedY, color }); // Broadcast update
     });
 
+
+    // Disconnect event
     socket.on("disconnect", () => {
         console.log("A user disconnected");
     });
 });
 
-// Start server
+// Start the server
+const PORT = 3000;
 server.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });

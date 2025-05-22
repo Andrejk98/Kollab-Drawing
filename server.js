@@ -14,32 +14,47 @@ let mainCanvasData = Array(MAIN_GRID_SIZE)
     .fill(null)
     .map(() => Array(MAIN_GRID_SIZE).fill("#ffffff")); // Initialize white grid
 
+const userAssignments = new Map(); // Map of socket.id to assigned grid index
+let nextUserIndex = 0; // Index for the next available grid section
+
 app.use(express.static("public"));
 
 io.on("connection", (socket) => {
     console.log("A user connected");
 
-    // Send the initial canvas state to the newly connected user
-    socket.emit("initCanvas", mainCanvasData);
+    // Assign a grid area to the new user
+    if (nextUserIndex < USERS) {
+        userAssignments.set(socket.id, nextUserIndex);
+        const assignedIndex = nextUserIndex;
+        nextUserIndex++;
 
-    // Update pixel and broadcast
-    socket.on("pixelUpdate", ({ x, y, color }) => {
-        const userIndex = Math.floor(y / GRID_SIZE) * USERS + Math.floor(x / GRID_SIZE);
-        const localX = x % GRID_SIZE;
-        const localY = y % GRID_SIZE;
+        // Inform the user of their assigned grid
+        const startX = (assignedIndex % USERS) * GRID_SIZE;
+        const startY = Math.floor(assignedIndex / USERS) * GRID_SIZE;
+        socket.emit("assignGrid", { startX, startY, GRID_SIZE });
 
-        const mappedX = (userIndex % USERS) * GRID_SIZE + localX;
-        const mappedY = Math.floor(userIndex / USERS) * GRID_SIZE + localY;
+        // Send the initial canvas state to the newly connected user
+        socket.emit("initCanvas", mainCanvasData);
 
-        mainCanvasData[mappedY][mappedX] = color; // Update server-side grid
-        io.emit("pixelUpdate", { x: mappedX, y: mappedY, color }); // Broadcast update
-    });
+        // Listen for pixel updates from the user
+        socket.on("pixelUpdate", ({ x, y, color }) => {
+            const mappedX = startX + x;
+            const mappedY = startY + y;
 
+            mainCanvasData[mappedY][mappedX] = color; // Update server-side grid
+            io.emit("pixelUpdate", { x: mappedX, y: mappedY, color }); // Broadcast update
+        });
 
-    // Disconnect event
-    socket.on("disconnect", () => {
-        console.log("A user disconnected");
-    });
+        // Handle disconnect
+        socket.on("disconnect", () => {
+            console.log("A user disconnected");
+            userAssignments.delete(socket.id);
+        });
+    } else {
+        // If the canvas is full
+        socket.emit("canvasFull");
+        socket.disconnect();
+    }
 });
 
 // Start the server

@@ -5,6 +5,8 @@ const PIXEL_SIZE = 20; // Size of each pixel
 const socket = io();
 
 let color = "#000000"; // Default color
+let startX = 0; // User's assigned grid start X
+let startY = 0; // User's assigned grid start Y
 
 // Resize the canvas to fit the viewport
 function resizeCanvas() {
@@ -45,4 +47,15 @@ function updatePixel(x, y) {
 // Handle color picker
 document.getElementById("colorPicker").addEventListener("input", (e) => {
     color = e.target.value;
+});
+
+// Handle grid assignment from the server
+socket.on("assignGrid", ({ startX: sx, startY: sy }) => {
+    startX = sx;
+    startY = sy;
+});
+
+// Show a message if the canvas is full
+socket.on("canvasFull", () => {
+    alert("The canvas is full. Please try again later.");
 });

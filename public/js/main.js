@@ -3,32 +3,51 @@ const socket = io();
 const canvas = document.getElementById("mainCanvas");
 const ctx = canvas.getContext("2d");
 
-const USERS = 20;
-const GRID_SIZE = 16; // Size of the grid for each user
-const MAIN_GRID_SIZE = GRID_SIZE * USERS; // Total grid size (320 for 20 users)
-let pixelSize; // Dynamically calculated based on canvas size
+const USERS = 20; // Anzahl der Nutzer
+const GRID_SIZE = 16; // Größe des Rasters pro Nutzer
+let ROWS, COLUMNS; // Dynamisch berechnete Reihen und Spalten
+let pixelSize; // Dynamisch berechnete Pixelgröße
 
-// Resize and recalculate pixel size
+// Dynamische Berechnung von Reihen und Spalten
+function calculateGridDimensions() {
+    // Seitenverhältnis des Canvas
+    const canvasAspectRatio = canvas.width / canvas.height;
+
+    // Starte mit einer Annahme für die Spaltenzahl
+    COLUMNS = Math.ceil(Math.sqrt(USERS * canvasAspectRatio));
+    ROWS = Math.ceil(USERS / COLUMNS);
+}
+
+// Canvas-Größe anpassen und Pixel berechnen
 function resizeCanvas() {
     canvas.width = window.innerWidth * 0.9;
     canvas.height = window.innerHeight * 0.9;
-    pixelSize = Math.min(canvas.width, canvas.height) / MAIN_GRID_SIZE;
+
+    calculateGridDimensions();
+
+    // Berechne die Pixelgröße
+    pixelSize = Math.min(
+        canvas.width / (COLUMNS * GRID_SIZE),
+        canvas.height / (ROWS * GRID_SIZE)
+    );
+
     drawGrid();
 }
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
-// Draw grid
+// Gitter zeichnen
 function drawGrid() {
-    for (let x = 0; x < MAIN_GRID_SIZE; x++) {
-        for (let y = 0; y < MAIN_GRID_SIZE; y++) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height); // Canvas löschen
+    for (let col = 0; col < COLUMNS * GRID_SIZE; col++) {
+        for (let row = 0; row < ROWS * GRID_SIZE; row++) {
             ctx.strokeStyle = "#ccc";
-            ctx.strokeRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+            ctx.strokeRect(col * pixelSize, row * pixelSize, pixelSize, pixelSize);
         }
     }
 }
 
-// Update pixel without distortion
+// Pixel aktualisieren
 function updatePixel(x, y, color) {
     ctx.fillStyle = color;
     ctx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
@@ -36,7 +55,7 @@ function updatePixel(x, y, color) {
     ctx.strokeRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
 }
 
-// Initialize main canvas
+// Haupt-Canvas initialisieren
 socket.on("initMainCanvas", (data) => {
     for (let y = 0; y < data.length; y++) {
         for (let x = 0; x < data[y].length; x++) {
@@ -45,8 +64,7 @@ socket.on("initMainCanvas", (data) => {
     }
 });
 
-
-// Receive updates from the server
+// Updates vom Server empfangen
 socket.on("pixelUpdate", ({ x, y, color }) => {
     updatePixel(x, y, color);
 });

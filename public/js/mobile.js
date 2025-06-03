@@ -59,3 +59,11 @@ socket.on("assignGrid", ({ startX: sx, startY: sy }) => {
 socket.on("canvasFull", () => {
     alert("The canvas is full. Please try again later.");
 });
+
+// Notify the server about the device type
+socket.emit("deviceType", "mobile");
+
+// Receive assigned grid coordinates
+socket.on("assignGrid", ({ startX, startY, GRID_SIZE }) => {
+    console.log("Assigned grid:", startX, startY, GRID_SIZE);
+});

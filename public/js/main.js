@@ -20,19 +20,22 @@ function calculateGridDimensions() {
 
 // Canvas-Größe anpassen und Pixel berechnen
 function resizeCanvas() {
-    canvas.width = window.innerWidth * 0.9;
-    canvas.height = window.innerHeight * 0.9;
-
+    // Dynamische Berechnung der Anzahl von Spalten und Reihen
     calculateGridDimensions();
 
     // Berechne die Pixelgröße
     pixelSize = Math.min(
-        canvas.width / (COLUMNS * GRID_SIZE),
-        canvas.height / (ROWS * GRID_SIZE)
+        window.innerWidth * 0.9 / (COLUMNS * GRID_SIZE),
+        window.innerHeight * 0.9 / (ROWS * GRID_SIZE)
     );
+
+    // Berechne die tatsächliche Canvas-Breite und -Höhe basierend auf den Pixeln
+    canvas.width = COLUMNS * GRID_SIZE * pixelSize;
+    canvas.height = ROWS * GRID_SIZE * pixelSize;
 
     drawGrid();
 }
+
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
@@ -68,3 +71,6 @@ socket.on("initMainCanvas", (data) => {
 socket.on("pixelUpdate", ({ x, y, color }) => {
     updatePixel(x, y, color);
 });
+
+// Notify the server about the device type
+socket.emit("deviceType", "viewer");

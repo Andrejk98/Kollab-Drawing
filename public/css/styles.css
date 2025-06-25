@@ -27,6 +27,10 @@ body {
     background-color: #fff;
 }
 
+.mainhead{
+    font-size: 3rem;
+}
+
 #color-controls {
     margin: 10px;
 }

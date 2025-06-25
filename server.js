@@ -52,11 +52,12 @@ io.on("connection", (socket) => {
 
     function handleUserDisconnect() {
         if (userAssignments.has(socket.id)) {
+            const assignedIndex = userAssignments.get(socket.id);
             userAssignments.delete(socket.id);
             userTimeouts.delete(socket.id);
 
-            // Check if all users are disconnected
-            if (userAssignments.size === 0) {
+            // Only save if all sections were used and no users are left
+            if (userAssignments.size === 0 && nextUserIndex >= TOTAL_USERS) {
                 saveCanvasAndReset();
             }
         }
@@ -85,46 +86,58 @@ io.on("connection", (socket) => {
             mainCanvasData = Array(MAIN_GRID_HEIGHT)
                 .fill(null)
                 .map(() => Array(MAIN_GRID_WIDTH).fill("#ffffff")); // Reset the canvas
+            nextUserIndex = 0; // Reset user index for new session
         });
     }
 
-    // Assign a grid to a new user
-    if (nextUserIndex < TOTAL_USERS) {
-        userAssignments.set(socket.id, nextUserIndex);
-        const assignedIndex = nextUserIndex;
-        nextUserIndex++;
+    // Listen for device type
+    socket.on("deviceType", (deviceType) => {
+        if (deviceType === "mobile") {
+            // Assign a grid to a new user
+            if (nextUserIndex < TOTAL_USERS) {
+                userAssignments.set(socket.id, nextUserIndex);
+                const assignedIndex = nextUserIndex;
+                nextUserIndex++;
 
-        const rowIndex = Math.floor(assignedIndex / USERS_PER_ROW);
-        const colIndex = assignedIndex % USERS_PER_ROW;
-        const startX = colIndex * GRID_SIZE;
-        const startY = rowIndex * GRID_SIZE;
+                const rowIndex = Math.floor(assignedIndex / USERS_PER_ROW);
+                const colIndex = assignedIndex % USERS_PER_ROW;
+                const startX = colIndex * GRID_SIZE;
+                const startY = rowIndex * GRID_SIZE;
 
-        socket.emit("assignGrid", { startX, startY, GRID_SIZE });
-        socket.emit("initCanvas", mainCanvasData);
+                socket.emit("assignGrid", { startX, startY, GRID_SIZE });
+                socket.emit("initCanvas", mainCanvasData);
 
-        // Set an inactivity timeout
-        resetUserTimeout();
+                // Set an inactivity timeout
+                resetUserTimeout();
 
-        // Handle pixel updates
-        socket.on("pixelUpdate", ({ x, y, color }) => {
-            resetUserTimeout();
+                // Handle pixel updates
+                socket.on("pixelUpdate", ({ x, y, color }) => {
+                    resetUserTimeout();
 
-            const mappedX = startX + x;
-            const mappedY = startY + y;
+                    const mappedX = startX + x;
+                    const mappedY = startY + y;
 
-            mainCanvasData[mappedY][mappedX] = color; // Update server-side grid
-            io.emit("pixelUpdate", { x: mappedX, y: mappedY, color }); // Broadcast update
-        });
+                    mainCanvasData[mappedY][mappedX] = color; // Update server-side grid
+                    io.emit("pixelUpdate", { x: mappedX, y: mappedY, color }); // Broadcast update
+                });
 
-        // Handle disconnect
-        socket.on("disconnect", () => {
-            console.log(`User ${socket.id} disconnected.`);
-            handleUserDisconnect();
-        });
-    } else {
-        socket.emit("canvasFull");
-        socket.disconnect();
-    }
+                // Handle disconnect
+                socket.on("disconnect", () => {
+                    console.log(`User ${socket.id} disconnected.`);
+                    handleUserDisconnect();
+                });
+            } else {
+                socket.emit("canvasFull");
+                socket.disconnect();
+            }
+        } else if (deviceType === "viewer") {
+            // Viewer connections (main canvas)
+            socket.emit("initCanvas", mainCanvasData);
+            socket.on("disconnect", () => {
+                console.log("A viewer disconnected");
+            });
+        }
+    });
 });
 
 // Start the server
